@@ -1,13 +1,17 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    //TODO Add identifiers, Modulo, Logicals, etc.
+    //TODO Add Logicals, etc.
     Number(String),
+    Identifier(String),
+    Equals,
     Plus,
     Minus,
     Asterisk,
     Slash,
+    Modulo,
     OpenParen,
     CloseParen,
+    EOL,
     EOF,
     Unknown,
 }
@@ -33,6 +37,8 @@ impl<'a> Tokenizer<'a> {
 
         match current_char {
             '0'..='9' => self.number(),
+            'a'..='z' | 'A'..='Z' | '_' => self.identifier(),
+            '=' => { self.advance(); Token::Equals },
             '+' => { self.advance(); Token::Plus },
             '-' => { self.advance(); Token::Minus },
             '*' => { self.advance(); Token::Asterisk },
@@ -58,13 +64,18 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn number(&mut self) -> Token {
-        // Creates a new number
-        // TODO: Add support for floating point
         let start = self.position;
         while self.position < self.input.len() && self.current_char().is_digit(10) {
             self.advance();
         }
         Token::Number(self.input[start..self.position].to_string())
     }
-}
 
+    fn identifier(&mut self) -> Token {
+        let start = self.position;
+        while self.position < self.input.len() && self.current_char().is_alphanumeric() {
+            self.advance();
+        }
+        Token::Identifier(self.input[start..self.position].to_string())
+    }
+}
