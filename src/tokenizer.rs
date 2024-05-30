@@ -43,6 +43,7 @@ impl<'a> Tokenizer<'a> {
             '-' => { self.advance(); Token::Minus },
             '*' => { self.advance(); Token::Asterisk },
             '/' => { self.advance(); Token::Slash },
+            '%' => { self.advance(); Token::Modulo },
             '(' => { self.advance(); Token::OpenParen },
             ')' => { self.advance(); Token::CloseParen },
             _ => { self.advance(); Token::Unknown },
