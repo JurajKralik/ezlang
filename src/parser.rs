@@ -13,7 +13,12 @@ pub enum ASTNode {
     BindingOperation {
         variable: Token,
         value: Box<ASTNode>,
-    }
+    },
+    LogicalOperation {
+        left: Box<ASTNode>,
+        operator: Token,
+        right: Box<ASTNode>,
+    },
 }
 
 #[derive(Debug)]
@@ -82,7 +87,7 @@ impl<'a> Parser<'a> {
     fn factor(&mut self) -> ASTNode {
         match &self.current_token {
             Token::Number(value) => {
-                let number = value.parse::<i64>().unwrap();
+                let number = value.clone();
                 self.advance();
                 ASTNode::Number(number)
             }
@@ -97,7 +102,7 @@ impl<'a> Parser<'a> {
                 self.expect(Token::CloseParen);
                 node
             }
-            _ => panic!("Unexpected token: {:?}", self.current_token),
+            _ => panic!("Error: Unexpected token: {:?}", self.current_token),
         }
     }
 
@@ -105,7 +110,7 @@ impl<'a> Parser<'a> {
         if self.current_token == expected_token {
             self.advance();
         } else {
-            panic!("Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
+            panic!("Error: Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
         }
     }
 }

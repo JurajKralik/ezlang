@@ -27,14 +27,13 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("Usage: {} <file_path>", args[0]);
-        std::process::exit(1);
+        panic!("Error: Provide a file path as an argument");
     }
 
     let file_path = &args[1];
 
     if !file_path.ends_with(".ez") {
-        panic!("The file does not have an .ez extension");
+        panic!("Error: The file does not have an .ez extension");
     }
     match read_file_to_string(file_path) {
         Ok(content) => {
@@ -49,11 +48,11 @@ fn main() {
                 println!("{:#?}", ast);
 
                 let result = interpreter.interpret(&ast);
-                println!("Result: {}", result);
+                println!("Result: {:?}", result);
             }
         }
         Err(e) => {
-            eprintln!("Failed to read the file: {}", e);
+            eprintln!("Error: {}", e);
         }
     }
 }

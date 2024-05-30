@@ -3,7 +3,7 @@ pub enum Token {
     //TODO Add Logicals, etc.
     None,
     Boolean(bool),
-    Number(String),
+    Number(i64),
     Identifier(String),
     Equals,
     Bind,
@@ -12,12 +12,15 @@ pub enum Token {
     Asterisk,
     Slash,
     Modulo,
+    And,
+    Or,
+    Not,
     OpenParen,
     CloseParen,
-    EOL,
     EOF,
     Unknown,
 }
+
 
 #[derive(Debug)]
 pub struct Tokenizer<'a> {
@@ -110,7 +113,9 @@ impl<'a> Tokenizer<'a> {
         while self.position < self.input.len() && self.current_char().is_digit(10) {
             self.advance();
         }
-        Token::Number(self.input[start..self.position].to_string())
+        let number_str = &self.input[start..self.position];
+        let number = number_str.parse::<i64>().unwrap();
+        Token::Number(number)
     }
 
     fn identifier(&mut self) -> Token {
