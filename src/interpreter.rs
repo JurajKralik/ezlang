@@ -45,7 +45,6 @@ impl Interpreter {
                     _ => panic!("Unexpected token: {:?}", variable),
                 };
                 self.variables.insert(variable_name.clone(), Token::Number(value.to_string()));
-                println!("Saved variables: {:?}" , self.variables);
                 value
             }
         }
