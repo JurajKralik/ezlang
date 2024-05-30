@@ -12,7 +12,7 @@ impl Interpreter {
         Interpreter { variables: HashMap::new() }
     }
 
-    pub fn interpret(&self, node: &ASTNode) -> i64 {
+    pub fn interpret(&mut self, node: &ASTNode) -> i64 {
         match node {
             ASTNode::Number(value) => *value,
             ASTNode::Identifier(name) => {
@@ -37,6 +37,16 @@ impl Interpreter {
                     Token::Modulo => left_val % right_val,
                     _ => panic!("Unexpected operator: {:?}", operator),
                 }
+            }
+            ASTNode::BindingOperation { variable, value } => {
+                let value = self.interpret(value);
+                let variable_name = match variable {
+                    Token::Identifier(name) => name,
+                    _ => panic!("Unexpected token: {:?}", variable),
+                };
+                self.variables.insert(variable_name.clone(), Token::Number(value.to_string()));
+                println!("Saved variables: {:?}" , self.variables);
+                value
             }
         }
     }

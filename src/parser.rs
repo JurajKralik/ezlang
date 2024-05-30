@@ -10,6 +10,10 @@ pub enum ASTNode {
         operator: Token,
         right: Box<ASTNode>,
     },
+    BindingOperation {
+        variable: Token,
+        value: Box<ASTNode>,
+    }
 }
 
 #[derive(Debug)]
@@ -30,7 +34,17 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> ASTNode {
-        self.expression()
+        if self.tokenizer.peek_token() == Token::Bind {
+            let variable = self.current_token.clone();
+            self.advance();
+            self.advance();
+            let node = self.expression();
+            ASTNode::BindingOperation {
+                variable,
+                value: Box::new(node),}
+        } else {
+            self.expression()
+        }
     }
 
     fn expression(&mut self) -> ASTNode {
