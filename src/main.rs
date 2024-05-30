@@ -1,3 +1,10 @@
+pub mod tokenizer;
+
+use crate::tokenizer::*;
+
+
 fn main() {
-    println!("Hello, world!");
+    let program = "3 + 6 / (3 - 1)";
+    let tokenizer = Tokenizer::new(program);
+    println!("{:#?}", tokenizer);
 }
