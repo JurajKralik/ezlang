@@ -136,6 +136,14 @@ impl Interpreter {
                     _ => panic!("Error i007: Unexpected operator: {:?}", operator),
                 })
             }
+            ASTNode::ConditionalOperation { condition, true_branch, false_branch } => {
+                let condition_val = self.interpret(condition);
+                match condition_val {
+                    Token::Boolean(true) => self.interpret(true_branch),
+                    Token::Boolean(false) => self.interpret(false_branch),
+                    _ => panic!("Error i008: Unexpected value: {:?}", condition_val),
+                }
+            }
         }
     }
 

@@ -18,6 +18,9 @@ pub enum Token {
     Not,
     OpenParen,
     CloseParen,
+    If,
+    Else,
+    Colon,
     EOF,
     Unknown,
 }
@@ -92,6 +95,10 @@ impl<'a> Tokenizer<'a> {
                 self.advance();
                 Token::Not
             }
+            ':' => {
+                self.advance();
+                Token::Colon
+            }
             _ => {
                 self.advance();
                 Token::Unknown
@@ -146,6 +153,7 @@ impl<'a> Tokenizer<'a> {
             "or" => Token::Or,
             "not" => Token::Not,
             "is" => Token::Equals,
+            "if" => Token::If,
             _ => Token::Identifier(token),
         }
     }

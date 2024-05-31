@@ -20,6 +20,11 @@ pub enum ASTNode {
         operator: Token,
         right: Box<ASTNode>,
     },
+    ConditionalOperation {
+        condition: Box<ASTNode>,
+        true_branch: Box<ASTNode>,
+        false_branch: Box<ASTNode>,
+    },
 }
 
 #[derive(Debug)]
@@ -48,6 +53,10 @@ impl<'a> Parser<'a> {
             ASTNode::BindingOperation {
                 variable,
                 value: Box::new(node),}
+        } else if self.current_token == Token::If {
+            self.advance();
+            self.expect(Token::Colon);
+            self.expression()
         } else {
             self.expression()
         }

@@ -19,29 +19,28 @@ fn read_file_to_string(file_path: &str) -> io::Result<String> {
     Ok(content)
 }
 
-fn split_to_lines(program: &str) -> Vec<&str> {
+fn split_to_chunks(program: &str) -> Vec<&str> {
     program.split('\n').collect()
 }
 
 fn main() {
+    // Get the file path from the command line arguments
     let args: Vec<String> = env::args().collect();
-
     if args.len() < 2 {
         panic!("Error: Provide a file path as an argument");
     }
-
     let file_path = &args[1];
-
     if !file_path.ends_with(".ez") {
         panic!("Error: The file does not have an .ez extension");
     }
+
     match read_file_to_string(file_path) {
         Ok(content) => {
             let mut interpreter = Interpreter::new();
 
-            for line in split_to_lines(content.as_str()) {
-                println!("Line: {}", line);
-                let tokenizer = Tokenizer::new(line);
+            for chunk in split_to_chunks(content.as_str()) {
+                println!("Line: {}", chunk);
+                let tokenizer = Tokenizer::new(chunk);
                 println!("{:?}", tokenizer);
                 let mut parser = Parser::new(tokenizer);
                 let ast = parser.parse();
