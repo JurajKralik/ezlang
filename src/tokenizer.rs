@@ -4,6 +4,7 @@ pub enum Token {
     None,
     Boolean(bool),
     Number(i64),
+    String(String),
     Identifier(String),
     Equals,
     Bind,
@@ -79,6 +80,18 @@ impl<'a> Tokenizer<'a> {
                 self.advance();
                 Token::CloseParen
             }
+            '&' => {
+                self.advance();
+                Token::And
+            }
+            '|' => {
+                self.advance();
+                Token::Or
+            }
+            '!' => {
+                self.advance();
+                Token::Not
+            }
             _ => {
                 self.advance();
                 Token::Unknown
@@ -129,6 +142,9 @@ impl<'a> Tokenizer<'a> {
         match token.as_str() {
             "true" => Token::Boolean(true),
             "false" => Token::Boolean(false),
+            "and" => Token::And,
+            "or" => Token::Or,
+            "not" => Token::Not,
             "is" => Token::Equals,
             _ => Token::Identifier(token),
         }

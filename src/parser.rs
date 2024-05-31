@@ -5,6 +5,7 @@ use crate::tokenizer::*;
 pub enum ASTNode {
     Number(i64),
     Identifier(String),
+    Boolean(bool),
     BinaryOperation {
         left: Box<ASTNode>,
         operator: Token,
@@ -71,7 +72,7 @@ impl<'a> Parser<'a> {
     fn term(&mut self) -> ASTNode {
         let mut node = self.factor();
 
-        while self.current_token == Token::Asterisk || self.current_token == Token::Slash || self.current_token == Token::Modulo {
+        while self.current_token == Token::Asterisk || self.current_token == Token::Slash || self.current_token == Token::Modulo || self.current_token == Token::And || self.current_token == Token::Or {
             let operator = self.current_token.clone();
             self.advance();
             node = ASTNode::BinaryOperation {
@@ -102,7 +103,21 @@ impl<'a> Parser<'a> {
                 self.expect(Token::CloseParen);
                 node
             }
-            _ => panic!("Error: Unexpected token: {:?}", self.current_token),
+            Token::Boolean(value) => {
+                let bool = value.clone();
+                self.advance();
+                ASTNode::Boolean(bool)
+            }
+            Token::Not => {
+                self.advance();
+                let node = self.factor();
+                ASTNode::LogicalOperation {
+                    left: Box::new(ASTNode::Boolean(false)),
+                    operator: Token::Not,
+                    right: Box::new(node),
+                }
+            } 
+            _ => panic!("Error p001: Unexpected token: {:?}", self.current_token),
         }
     }
 
@@ -110,7 +125,7 @@ impl<'a> Parser<'a> {
         if self.current_token == expected_token {
             self.advance();
         } else {
-            panic!("Error: Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
+            panic!("Error p002: Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
         }
     }
 }
