@@ -27,6 +27,10 @@ pub enum ASTNode {
         condition: Box<ASTNode>,
         indent_level: usize
     },
+    AlternativeOperation {
+        condition: Option<Box<ASTNode>>,
+        indent_level: usize
+    },
 }
 
 #[derive(Debug)]
@@ -62,6 +66,19 @@ impl<'a> Parser<'a> {
             self.expect(Token::Colon);
             ASTNode::ConditionalOperation {
                 condition: Box::new(node),
+                indent_level: self.tokenizer.indent_level,
+            }
+        } else if self.current_token == Token::Else {
+            ASTNode::AlternativeOperation {
+                condition: None,
+                indent_level: self.tokenizer.indent_level,
+            }
+        } else if self.current_token == Token::ElseIf {
+            self.advance();
+            let node = self.expression();
+            self.expect(Token::Colon);
+            ASTNode::AlternativeOperation {
+                condition: Some(Box::new(node)),
                 indent_level: self.tokenizer.indent_level,
             }
         } else {

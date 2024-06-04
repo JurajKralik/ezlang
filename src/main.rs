@@ -42,12 +42,12 @@ fn main() {
                 println!("__________________");
                 println!("Line: {}", line);
                 let tokenizer = Tokenizer::new(line);
-                println!("Tokenizer{:?}", tokenizer);
+                println!("{:?}", tokenizer);
                 let mut parser = Parser::new(tokenizer);
                 let ast = parser.parse();
                 println!("AST: {:#?}", ast);
-                println!("Interpreter: {:?}", interpreter);
-                let result = interpreter.interpret(&ast);
+                println!("{:?}", interpreter);
+                let result = interpreter.interpret_line(&ast);
                 println!("Result: {:?}", result);
             }
         }

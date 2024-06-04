@@ -18,7 +18,7 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, node: &ASTNode) -> Token {
+    pub fn interpret_line(&mut self, node: &ASTNode) -> Token {
         if self.pass {
             let mut local_indent_level = 0;
             match node {
@@ -50,15 +50,40 @@ impl Interpreter {
                     condition: _,
                     indent_level,
                 } => local_indent_level = indent_level.clone(),
+                ASTNode::AlternativeOperation {
+                    condition,
+                    indent_level,
+                } => {
+                    local_indent_level = indent_level.clone();
+                    if local_indent_level == self.indent_level {
+                        if let Some(elif_condition) = condition {
+                            //Elif
+                            if self.interpret(elif_condition) == Token::Boolean(true) {
+                                self.pass = false;
+                                return Token::Boolean(true);
+                            } else {
+                                self.pass = true;
+                                return Token::Boolean(false);
+                            }
+                        } else {
+                            //Else
+                            self.pass = false;
+                            return Token::Boolean(true)
+                        }
+                    }
+                }
             }
-            
-            if local_indent_level > self.indent_level {
+            if local_indent_level > self.indent_level && self.pass {
                 return Token::None;
             } else {
                 self.pass = false;
+                return Token::Boolean(true)
             }
         }
+        self.interpret(node)
+    }
 
+    pub fn interpret(&mut self, node: &ASTNode) -> Token {
         match node {
             ASTNode::Number(value, _indent_level) => Token::Number(*value),
             ASTNode::Boolean(value, _indent_level) => Token::Boolean(*value),
@@ -250,6 +275,14 @@ impl Interpreter {
                     }
                     _ => panic!("Error i008: Unexpected value: {:?}", condition_val),
                 }
+            }
+            ASTNode::AlternativeOperation {
+                condition: _,
+                indent_level,
+            } => {
+                self.indent_level = indent_level.clone();
+                self.pass = true;
+                Token::None
             }
         }
     }
