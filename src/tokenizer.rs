@@ -21,6 +21,7 @@ pub enum Token {
     If,
     Else,
     ElseIf,
+    Print,
     Colon,
     EOF,
     Unknown,
@@ -67,6 +68,7 @@ impl<'a> Tokenizer<'a> {
                 self.advance();
                 Token::Bind
             }
+            '"' => self.string(),
             '+' => {
                 self.advance();
                 Token::Plus
@@ -150,6 +152,17 @@ impl<'a> Tokenizer<'a> {
         Token::Number(number)
     }
 
+    fn string(&mut self) -> Token {
+        self.advance();
+        let start = self.position;
+        while self.position < self.input.len() && self.current_char() != '"' {
+            self.advance();
+        }
+        let string = self.input[start..self.position].to_string();
+        self.advance();
+        Token::String(string)
+    }
+
     fn identifier(&mut self) -> Token {
         let start = self.position;
         while self.position < self.input.len() && self.current_char().is_alphanumeric() {
@@ -168,6 +181,7 @@ impl<'a> Tokenizer<'a> {
             "if" => Token::If,
             "else" => Token::Else,
             "elseif" => Token::ElseIf,
+            "print" => Token::Print,
             _ => Token::Identifier(token),
         }
     }

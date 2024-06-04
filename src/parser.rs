@@ -1,11 +1,11 @@
 use crate::tokenizer::*;
 
-
 #[derive(Debug)]
 pub enum ASTNode {
     Number(i64, usize),
     Identifier(String, usize),
     Boolean(bool, usize),
+    String(String, usize),
     BinaryOperation {
         left: Box<ASTNode>,
         operator: Token,
@@ -25,11 +25,15 @@ pub enum ASTNode {
     },
     ConditionalOperation {
         condition: Box<ASTNode>,
-        indent_level: usize
+        indent_level: usize,
     },
     AlternativeOperation {
         condition: Option<Box<ASTNode>>,
-        indent_level: usize
+        indent_level: usize,
+    },
+    OutputOperation {
+        value: Box<ASTNode>,
+        indent_level: usize,
     },
 }
 
@@ -41,7 +45,10 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(tokenizer: Tokenizer<'a>) -> Self {
-        let mut parser = Parser { tokenizer, current_token: Token::EOF };
+        let mut parser = Parser {
+            tokenizer,
+            current_token: Token::EOF,
+        };
         parser.advance();
         parser
     }
@@ -59,7 +66,17 @@ impl<'a> Parser<'a> {
             ASTNode::BindingOperation {
                 variable,
                 value: Box::new(node),
-                indent_level: self.tokenizer.indent_level,}
+                indent_level: self.tokenizer.indent_level,
+            }
+        } else if self.current_token == Token::Print {
+            self.advance();
+            self.expect(Token::OpenParen);
+            let node = self.expression();
+            self.expect(Token::CloseParen);
+            ASTNode::OutputOperation {
+                value: Box::new(node),
+                indent_level: self.tokenizer.indent_level,
+            }
         } else if self.current_token == Token::If {
             self.advance();
             let node = self.expression();
@@ -106,7 +123,12 @@ impl<'a> Parser<'a> {
     fn term(&mut self) -> ASTNode {
         let mut node = self.factor();
 
-        while self.current_token == Token::Asterisk || self.current_token == Token::Slash || self.current_token == Token::Modulo || self.current_token == Token::And || self.current_token == Token::Or {
+        while self.current_token == Token::Asterisk
+            || self.current_token == Token::Slash
+            || self.current_token == Token::Modulo
+            || self.current_token == Token::And
+            || self.current_token == Token::Or
+        {
             let operator = self.current_token.clone();
             self.advance();
             node = ASTNode::BinaryOperation {
@@ -122,7 +144,7 @@ impl<'a> Parser<'a> {
 
     fn factor(&mut self) -> ASTNode {
         match &self.current_token {
-            Token::Number(value ) => {
+            Token::Number(value) => {
                 let number = value.clone();
                 self.advance();
                 ASTNode::Number(number, self.tokenizer.indent_level)
@@ -152,7 +174,12 @@ impl<'a> Parser<'a> {
                     right: Box::new(node),
                     indent_level: self.tokenizer.indent_level,
                 }
-            } 
+            }
+            Token::String(value) => {
+                let string = value.clone();
+                self.advance();
+                ASTNode::String(string, self.tokenizer.indent_level)
+            }
             _ => panic!("Error p001: Unexpected token: {:?}", self.current_token),
         }
     }
@@ -161,7 +188,10 @@ impl<'a> Parser<'a> {
         if self.current_token == expected_token {
             self.advance();
         } else {
-            panic!("Error p002: Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
+            panic!(
+                "Error p002: Expected token: {:?}, but found: {:?}",
+                expected_token, self.current_token
+            );
         }
     }
 }

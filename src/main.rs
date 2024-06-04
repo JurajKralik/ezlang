@@ -39,16 +39,16 @@ fn main() {
             let mut interpreter = Interpreter::new();
 
             for line in split_to_lines(content.as_str()) {
-                println!("__________________");
-                println!("Line: {}", line);
+                //println!("__________________");
+                //println!("Line: {}", line);
                 let tokenizer = Tokenizer::new(line);
-                println!("{:?}", tokenizer);
+                //println!("{:?}", tokenizer);
                 let mut parser = Parser::new(tokenizer);
                 let ast = parser.parse();
-                println!("AST: {:#?}", ast);
-                println!("{:?}", interpreter);
+                //println!("AST: {:#?}", ast);
+                //println!("{:?}", interpreter);
                 let result = interpreter.interpret_line(&ast);
-                println!("Result: {:?}", result);
+                //println!("Result: {:?}", result);
             }
         }
         Err(e) => {

@@ -29,6 +29,7 @@ impl Interpreter {
                 ASTNode::Identifier(_name, node_indent_level) => {
                     local_indent_level = node_indent_level.clone()
                 }
+                ASTNode::String(_value, indent_level) => local_indent_level = indent_level.clone(),
                 ASTNode::BinaryOperation {
                     left: _,
                     operator: _,
@@ -40,6 +41,9 @@ impl Interpreter {
                     value: _,
                     indent_level,
                 } => local_indent_level = indent_level.clone(),
+                ASTNode::OutputOperation { value: _, indent_level } => {
+                    local_indent_level = indent_level.clone()
+                }
                 ASTNode::LogicalOperation {
                     left: _,
                     operator: _,
@@ -83,7 +87,17 @@ impl Interpreter {
         self.interpret(node)
     }
 
-    pub fn interpret(&mut self, node: &ASTNode) -> Token {
+    fn print_interpret(&mut self, node: &ASTNode) -> String {
+        let token = self.interpret(node);
+        match token {
+            Token::Number(value) => value.to_string(),
+            Token::Boolean(value) => value.to_string(),
+            Token::String(value) => value,
+            _ => panic!("Error i009: Unexpected token: {:?}", token),
+        }
+    }
+
+    fn interpret(&mut self, node: &ASTNode) -> Token {
         match node {
             ASTNode::Number(value, _indent_level) => Token::Number(*value),
             ASTNode::Boolean(value, _indent_level) => Token::Boolean(*value),
@@ -91,10 +105,17 @@ impl Interpreter {
                 Some(token) => match token {
                     Token::Number(value) => Token::Number(value.clone()),
                     Token::Boolean(value) => Token::Boolean(value.clone()),
+                    Token::String(value) => Token::String(value.clone()),
                     _ => panic!("Error i001: Unexpected token: {:?}", token),
                 },
                 None => panic!("Error i002: Variable not found: {}", name),
             },
+            ASTNode::String(value, _indent_level) => Token::String(value.clone()),
+            ASTNode::OutputOperation { value, indent_level: _ } => {
+                let token_value = self.print_interpret(value);
+                println!("{}", token_value);
+                Token::None
+            }
             ASTNode::BinaryOperation {
                 left,
                 operator,
