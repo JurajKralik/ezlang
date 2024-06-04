@@ -1,6 +1,7 @@
 pub mod interpreter;
 pub mod parser;
 pub mod tokenizer;
+pub mod error_handler;
 
 use std::env;
 use std::fs::File;
@@ -10,6 +11,8 @@ use std::path::Path;
 use crate::interpreter::*;
 use crate::parser::*;
 use crate::tokenizer::*;
+use error_handler::*;
+
 
 fn read_file_to_string(file_path: &str) -> io::Result<String> {
     let path = Path::new(file_path);
