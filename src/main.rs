@@ -19,7 +19,7 @@ fn read_file_to_string(file_path: &str) -> io::Result<String> {
     Ok(content)
 }
 
-fn split_to_chunks(program: &str) -> Vec<&str> {
+fn split_to_lines(program: &str) -> Vec<&str> {
     program.split('\n').collect()
 }
 
@@ -38,14 +38,15 @@ fn main() {
         Ok(content) => {
             let mut interpreter = Interpreter::new();
 
-            for chunk in split_to_chunks(content.as_str()) {
-                println!("Line: {}", chunk);
-                let tokenizer = Tokenizer::new(chunk);
-                println!("{:?}", tokenizer);
+            for line in split_to_lines(content.as_str()) {
+                println!("__________________");
+                println!("Line: {}", line);
+                let tokenizer = Tokenizer::new(line);
+                println!("Tokenizer{:?}", tokenizer);
                 let mut parser = Parser::new(tokenizer);
                 let ast = parser.parse();
-                println!("{:#?}", ast);
-
+                println!("AST: {:#?}", ast);
+                println!("Interpreter: {:?}", interpreter);
                 let result = interpreter.interpret(&ast);
                 println!("Result: {:?}", result);
             }

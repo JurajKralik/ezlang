@@ -3,27 +3,29 @@ use crate::tokenizer::*;
 
 #[derive(Debug)]
 pub enum ASTNode {
-    Number(i64),
-    Identifier(String),
-    Boolean(bool),
+    Number(i64, usize),
+    Identifier(String, usize),
+    Boolean(bool, usize),
     BinaryOperation {
         left: Box<ASTNode>,
         operator: Token,
         right: Box<ASTNode>,
+        indent_level: usize,
     },
     BindingOperation {
         variable: Token,
         value: Box<ASTNode>,
+        indent_level: usize,
     },
     LogicalOperation {
         left: Box<ASTNode>,
         operator: Token,
         right: Box<ASTNode>,
+        indent_level: usize,
     },
     ConditionalOperation {
         condition: Box<ASTNode>,
-        true_branch: Box<ASTNode>,
-        false_branch: Box<ASTNode>,
+        indent_level: usize
     },
 }
 
@@ -52,11 +54,16 @@ impl<'a> Parser<'a> {
             let node = self.expression();
             ASTNode::BindingOperation {
                 variable,
-                value: Box::new(node),}
+                value: Box::new(node),
+                indent_level: self.tokenizer.indent_level,}
         } else if self.current_token == Token::If {
             self.advance();
+            let node = self.expression();
             self.expect(Token::Colon);
-            self.expression()
+            ASTNode::ConditionalOperation {
+                condition: Box::new(node),
+                indent_level: self.tokenizer.indent_level,
+            }
         } else {
             self.expression()
         }
@@ -72,6 +79,7 @@ impl<'a> Parser<'a> {
                 left: Box::new(node),
                 operator,
                 right: Box::new(self.term()),
+                indent_level: self.tokenizer.indent_level,
             };
         }
 
@@ -88,6 +96,7 @@ impl<'a> Parser<'a> {
                 left: Box::new(node),
                 operator,
                 right: Box::new(self.factor()),
+                indent_level: self.tokenizer.indent_level,
             };
         }
 
@@ -96,15 +105,15 @@ impl<'a> Parser<'a> {
 
     fn factor(&mut self) -> ASTNode {
         match &self.current_token {
-            Token::Number(value) => {
+            Token::Number(value ) => {
                 let number = value.clone();
                 self.advance();
-                ASTNode::Number(number)
+                ASTNode::Number(number, self.tokenizer.indent_level)
             }
             Token::Identifier(name) => {
                 let identifier = name.clone();
                 self.advance();
-                ASTNode::Identifier(identifier)
+                ASTNode::Identifier(identifier, self.tokenizer.indent_level)
             }
             Token::OpenParen => {
                 self.advance();
@@ -115,15 +124,16 @@ impl<'a> Parser<'a> {
             Token::Boolean(value) => {
                 let bool = value.clone();
                 self.advance();
-                ASTNode::Boolean(bool)
+                ASTNode::Boolean(bool, self.tokenizer.indent_level)
             }
             Token::Not => {
                 self.advance();
                 let node = self.factor();
                 ASTNode::LogicalOperation {
-                    left: Box::new(ASTNode::Boolean(false)),
+                    left: Box::new(ASTNode::Boolean(false, self.tokenizer.indent_level)),
                     operator: Token::Not,
                     right: Box::new(node),
+                    indent_level: self.tokenizer.indent_level,
                 }
             } 
             _ => panic!("Error p001: Unexpected token: {:?}", self.current_token),

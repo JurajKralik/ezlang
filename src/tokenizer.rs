@@ -20,6 +20,7 @@ pub enum Token {
     CloseParen,
     If,
     Else,
+    ElseIf,
     Colon,
     EOF,
     Unknown,
@@ -29,14 +30,25 @@ pub enum Token {
 #[derive(Debug)]
 pub struct Tokenizer<'a> {
     input: &'a str,
-    position: usize
+    position: usize,
+    pub indent_level: usize,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
+        let mut indent_level =  0;
+        for c in input.chars() {
+            if c == ' ' {
+                indent_level += 1;
+            } else {
+                break;
+            }
+        }
+
         Tokenizer {
             input,
-            position: 0
+            position: 0,
+            indent_level: indent_level,
         }
     }
 
@@ -154,6 +166,8 @@ impl<'a> Tokenizer<'a> {
             "not" => Token::Not,
             "is" => Token::Equals,
             "if" => Token::If,
+            "else" => Token::Else,
+            "elseif" => Token::ElseIf,
             _ => Token::Identifier(token),
         }
     }
