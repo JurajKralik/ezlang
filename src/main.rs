@@ -35,7 +35,7 @@ fn main() {
     }
     let mut debugger = false;
     if args.len() == 3 {
-        debugger = &args[2] == "y";
+        debugger = &args[2] == "debug";
     }
 
     match read_file_to_string(file_path) {

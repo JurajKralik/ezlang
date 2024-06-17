@@ -1,9 +1,12 @@
+use core::panic;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     //TODO Add Logicals, etc.
     None,
     Boolean(bool),
-    Number(i64),
+    Integer(i64),
+    Float(f64),
     String(String),
     Identifier(String),
     Comparison(Compare),
@@ -166,12 +169,24 @@ impl<'a> Tokenizer<'a> {
 
     fn number(&mut self) -> Token {
         let start = self.position;
-        while self.position < self.input.len() && self.current_char().is_digit(10) {
+        let mut point_used = false;
+        while self.position < self.input.len() && self.current_char().is_digit(10) || self.current_char() == '.'{
+            if self.current_char() == '.' {
+                if point_used {
+                    panic!("Error t001: Too many points in number literal");
+                }
+                point_used = true;
+            }
             self.advance();
         }
         let number_str = &self.input[start..self.position];
-        let number = number_str.parse::<i64>().unwrap();
-        Token::Number(number)
+        if point_used {
+            let number = number_str.parse::<f64>().unwrap();
+            return Token::Float(number);
+        } else {
+            let number = number_str.parse::<i64>().unwrap();
+            return Token::Integer(number);
+        }
     }
 
     fn string(&mut self) -> Token {

@@ -72,25 +72,28 @@ impl Interpreter {
     fn print_interpret(&mut self, node: &ASTNode) -> String {
         let token = self.interpret(node);
         match token {
-            Token::Number(value) => value.to_string(),
+            Token::Integer(value) => value.to_string(),
+            Token::Float(value) => value.to_string(),
             Token::Boolean(value) => value.to_string(),
             Token::String(value) => value,
-            _ => panic!("Error i009: Unexpected token: {:?}", token),
+            _ => panic!("Error i009: Unexpected token: {:?} on line {}", token, self.line_number),
         }
     }
 
     fn interpret(&mut self, node: &ASTNode) -> Token {
         match node {
-            ASTNode::Number(value, _indent_level) => Token::Number(*value),
+            ASTNode::Integer(value, _indent_level) => Token::Integer(*value),
+            ASTNode::Float(value, _indent_level) => Token::Float(*value),
             ASTNode::Boolean(value, _indent_level) => Token::Boolean(*value),
             ASTNode::Identifier(name, _indent_level) => match self.variables.get(name) {
                 Some(token) => match token {
-                    Token::Number(value) => Token::Number(value.clone()),
+                    Token::Integer(value) => Token::Integer(value.clone()),
+                    Token::Float(value) => Token::Float(value.clone()),
                     Token::Boolean(value) => Token::Boolean(value.clone()),
                     Token::String(value) => Token::String(value.clone()),
-                    _ => panic!("Error i001: Unexpected token: {:?}", token),
+                    _ => panic!("Error i001: Unexpected token: {:?} on line {}", token, self.line_number),
                 },
-                None => panic!("Error i002: Variable not found: {}", name),
+                None => panic!("Error i002: Variable not found: {} on line {}", name, self.line_number),
             },
             ASTNode::String(value, _indent_level) => Token::String(value.clone()),
             ASTNode::OutputOperation {
@@ -111,80 +114,89 @@ impl Interpreter {
                 let right_val = self.interpret(right);
                 match operator.clone() {
                     Token::Plus => match (left_val.clone(), right_val.clone()) {
-                        (Token::Number(left_num), Token::Number(right_num)) => {
-                            Token::Number(left_num + right_num)
+                        (Token::Integer(left_num), Token::Integer(right_num)) => {
+                            Token::Integer(left_num + right_num)
                         }
-                        (Token::Number(left_num), Token::Boolean(right_bool)) => {
-                            Token::Boolean(self.num_to_bool(left_num) || right_bool)
+                        (Token::Float(left_num), Token::Float(right_num)) => {
+                            Token::Float(left_num + right_num)
                         }
-                        (Token::Boolean(left_bool), Token::Number(right_num)) => {
-                            Token::Boolean(left_bool || self.num_to_bool(right_num))
+                        (Token::Integer(left_num), Token::Float(right_num)) => {
+                            Token::Float(left_num as f64 + right_num)
+                        }
+                        (Token::Float(left_num), Token::Integer(right_num)) => {
+                            Token::Float(left_num + right_num as f64)
                         }
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool || right_bool)
                         }
+                        (Token::Integer(_left_num), Token::Boolean(right_bool)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) || right_bool)
+                        }
+                        (Token::Boolean(left_bool), Token::Integer(_right_num)) => {
+                            Token::Boolean(left_bool || self.num_to_bool(right_val.clone()))
+                        }
                         (Token::String(left_str), Token::String(right_str)) => {
                             Token::String(format!("{}{}", left_str, right_str))
                         }
-                        (Token::String(left_str), Token::Number(right_num)) => {
+                        (Token::String(left_str), Token::Integer(right_num)) => {
                             Token::String(format!("{}{}", left_str, right_num))
                         }
                         _ => panic!(
-                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
-                            left_val, operator, right_val
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}, on line {}",
+                            left_val, operator, right_val, self.line_number
                         ),
                     },
                     Token::Minus => match (left_val.clone(), right_val.clone()) {
-                        (Token::Number(left_num), Token::Number(right_num)) => {
-                            Token::Number(left_num - right_num)
+                        (Token::Integer(left_num), Token::Integer(right_num)) => {
+                            Token::Integer(left_num - right_num)
                         }
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool && !right_bool)
                         }
-                        (Token::Boolean(left_bool), Token::Number(right_num)) => {
-                            Token::Boolean(left_bool && !self.num_to_bool(right_num))
+                        (Token::Boolean(left_bool), Token::Integer(_right_num)) => {
+                            Token::Boolean(left_bool && !self.num_to_bool(right_val.clone()))
                         }
-                        (Token::Number(left_num), Token::Boolean(right_bool)) => {
-                            Token::Boolean(self.num_to_bool(left_num) && !right_bool)
+                        (Token::Integer(_left_num), Token::Boolean(right_bool)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) && !right_bool)
                         }
                         _ => panic!(
-                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
-                            left_val, operator, right_val
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}, on line {}",
+                            left_val, operator, right_val, self.line_number
                         ),
                     },
                     Token::Asterisk => match (left_val.clone(), right_val.clone()) {
-                        (Token::Number(left_num), Token::Number(right_num)) => {
-                            Token::Number(left_num * right_num)
+                        (Token::Integer(left_num), Token::Integer(right_num)) => {
+                            Token::Integer(left_num * right_num)
                         }
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool && right_bool)
                         }
                         _ => panic!(
-                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
-                            left_val, operator, right_val
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}, on line {}",
+                            left_val, operator, right_val, self.line_number
                         ),
                     },
                     Token::Slash => {
-                        if let (Token::Number(left_num), Token::Number(right_num)) =
+                        if let (Token::Integer(left_num), Token::Integer(right_num)) =
                             (left_val.clone(), right_val.clone())
                         {
-                            Token::Number(left_num / right_num)
+                            Token::Integer(left_num / right_num)
                         } else {
                             panic!(
-                                "Error i003: Unexpected values {:?}, {:?}, {:?}",
-                                left_val, operator, right_val
+                                "Error i003: Unexpected values {:?}, {:?}, {:?}, on line {}",
+                                left_val, operator, right_val, self.line_number
                             );
                         }
                     }
                     Token::Modulo => {
-                        if let (Token::Number(left_num), Token::Number(right_num)) =
+                        if let (Token::Integer(left_num), Token::Integer(right_num)) =
                             (left_val.clone(), right_val.clone())
                         {
-                            Token::Number(left_num % right_num)
+                            Token::Integer(left_num % right_num)
                         } else {
                             panic!(
-                                "Error i003: Unexpected values {:?}, {:?}, {:?}",
-                                left_val, operator, right_val
+                                "Error i003: Unexpected values {:?}, {:?}, {:?}, on line {}",
+                                left_val, operator, right_val, self.line_number
                             );
                         }
                     }
@@ -192,63 +204,63 @@ impl Interpreter {
                         (Token::Boolean(left), Token::Boolean(right)) => {
                             Token::Boolean(left && right)
                         }
-                        (Token::Number(left), Token::Number(right)) => {
-                            Token::Boolean(self.num_to_bool(left) && self.num_to_bool(right))
+                        (Token::Integer(_left), Token::Integer(_right)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) && self.num_to_bool(right_val.clone()))
                         }
-                        (Token::Number(left), Token::Boolean(right)) => {
-                            Token::Boolean(self.num_to_bool(left) && right)
+                        (Token::Integer(_left), Token::Boolean(right)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) && right)
                         }
-                        (Token::Boolean(left), Token::Number(right)) => {
-                            Token::Boolean(left && self.num_to_bool(right))
+                        (Token::Boolean(left), Token::Integer(_right)) => {
+                            Token::Boolean(left && self.num_to_bool(right_val.clone()))
                         }
-                        _ => panic!("Error i003: Unexpected values"),
+                        _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                     },
                     Token::Or => match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => {
                             Token::Boolean(left || right)
                         }
-                        (Token::Number(left), Token::Number(right)) => {
-                            Token::Boolean(self.num_to_bool(left) || self.num_to_bool(right))
+                        (Token::Integer(_left), Token::Integer(_right)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) || self.num_to_bool(right_val.clone()))
                         }
-                        (Token::Number(left), Token::Boolean(right)) => {
-                            Token::Boolean(self.num_to_bool(left) || right)
+                        (Token::Integer(_left), Token::Boolean(right)) => {
+                            Token::Boolean(self.num_to_bool(left_val.clone()) || right)
                         }
-                        (Token::Boolean(left), Token::Number(right)) => {
-                            Token::Boolean(left || self.num_to_bool(right))
+                        (Token::Boolean(left), Token::Integer(_right)) => {
+                            Token::Boolean(left || self.num_to_bool(right_val.clone()))
                         }
-                        _ => panic!("Error i003: Unexpected values"),
+                        _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                     },
                     Token::Comparison(operator) => match operator {
                         Compare::Equal => Token::Boolean(left_val == right_val),
                         Compare::NotEqual => Token::Boolean(left_val != right_val),
                         Compare::LessThan => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => {
+                            (Token::Integer(left), Token::Integer(right)) => {
                                 Token::Boolean(left < right)
                             }
-                            _ => panic!("Error i003: Unexpected values"),
+                            _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                         },
                         Compare::LessThanOrEqual => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => {
+                            (Token::Integer(left), Token::Integer(right)) => {
                                 Token::Boolean(left <= right)
                             }
-                            _ => panic!("Error i003: Unexpected values"),
+                            _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                         },
                         Compare::GreaterThan => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => {
+                            (Token::Integer(left), Token::Integer(right)) => {
                                 Token::Boolean(left > right)
                             }
-                            _ => panic!("Error i003: Unexpected values"),
+                            _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                         },
                         Compare::GreaterThanOrEqual => {
                             match (left_val.clone(), right_val.clone()) {
-                                (Token::Number(left), Token::Number(right)) => {
+                                (Token::Integer(left), Token::Integer(right)) => {
                                     Token::Boolean(left >= right)
                                 }
-                                _ => panic!("Error i003: Unexpected values"),
+                                _ => panic!("Error i003: Unexpected values on line {}", self.line_number),
                             }
                         }
                     },
-                    _ => panic!("Error i004: Unexpected operator: {:?}", operator),
+                    _ => panic!("Error i004: Unexpected operator: {:?} on line {}", operator, self.line_number),
                 }
             }
             ASTNode::BindingOperation {
@@ -259,7 +271,7 @@ impl Interpreter {
                 let token_value = self.interpret(value);
                 let variable_name = match variable {
                     Token::Identifier(name) => name,
-                    _ => panic!("Error i005: Unexpected token: {:?}", variable),
+                    _ => panic!("Error i005: Unexpected token: {:?}, on line {}", variable, self.line_number),
                 };
                 self.variables
                     .insert(variable_name.clone(), token_value.clone());
@@ -276,16 +288,16 @@ impl Interpreter {
                     let right_val = self.interpret(right);
                     match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => left && right,
-                        (Token::Number(left), Token::Number(right)) => {
-                            self.num_to_bool(left) && self.num_to_bool(right)
+                        (Token::Integer(_left), Token::Integer(_right)) => {
+                            self.num_to_bool(left_val.clone()) && self.num_to_bool(right_val.clone())
                         }
-                        (Token::Number(left), Token::Boolean(right)) => {
-                            self.num_to_bool(left) && right
+                        (Token::Integer(_left), Token::Boolean(right)) => {
+                            self.num_to_bool(left_val.clone()) && right
                         }
-                        (Token::Boolean(left), Token::Number(right)) => {
-                            left && self.num_to_bool(right)
+                        (Token::Boolean(left), Token::Integer(_right)) => {
+                            left && self.num_to_bool(right_val.clone())
                         }
-                        _ => panic!("Error i006: Unexpected values"),
+                        _ => panic!("Error i006: Unexpected values on line {}", self.line_number),
                     }
                 }
                 Token::Or => {
@@ -293,27 +305,27 @@ impl Interpreter {
                     let right_val = self.interpret(right);
                     match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => left || right,
-                        (Token::Number(left), Token::Number(right)) => {
-                            self.num_to_bool(left) || self.num_to_bool(right)
+                        (Token::Integer(_left), Token::Integer(_right)) => {
+                            self.num_to_bool(left_val.clone()) || self.num_to_bool(right_val.clone())
                         }
-                        (Token::Number(left), Token::Boolean(right)) => {
-                            self.num_to_bool(left) || right
+                        (Token::Integer(_left), Token::Boolean(right)) => {
+                            self.num_to_bool(left_val.clone()) || right
                         }
-                        (Token::Boolean(left), Token::Number(right)) => {
-                            left || self.num_to_bool(right)
+                        (Token::Boolean(left), Token::Integer(_right)) => {
+                            left || self.num_to_bool(right_val.clone())
                         }
-                        _ => panic!("Error i006: Unexpected values"),
+                        _ => panic!("Error i006: Unexpected values on line {}", self.line_number),
                     }
                 }
                 Token::Not => {
                     let right_val = self.interpret(right);
                     match right_val {
                         Token::Boolean(right) => !right,
-                        Token::Number(right) => !self.num_to_bool(right),
-                        _ => panic!("Error i006: Unexpected values"),
+                        Token::Integer(_right) => !self.num_to_bool(right_val.clone()),
+                        _ => panic!("Error i006: Unexpected values on line {}", self.line_number),
                     }
                 }
-                _ => panic!("Error i007: Unexpected operator: {:?}", operator),
+                _ => panic!("Error i007: Unexpected operator: {:?} on line {}", operator, self.line_number),
             }),
             ASTNode::ConditionalOperation {
                 condition,
@@ -333,7 +345,7 @@ impl Interpreter {
                         self.new_indent_level = false;
                         Token::Boolean(false)
                     }
-                    _ => panic!("Error i008: Unexpected value: {:?}", condition_val),
+                    _ => panic!("Error i008: Unexpected value: {:?} on line {}", condition_val, self.line_number),
                 }
             }
             ASTNode::AlternativeOperation {
@@ -347,7 +359,11 @@ impl Interpreter {
         }
     }
 
-    fn num_to_bool(&self, num: i64) -> bool {
-        num != 0
+    fn num_to_bool(&self, token: Token) -> bool {
+        match token {
+            Token::Integer(num) => num != 0,
+            Token::Float(num) => num != 0.0,
+            _ => panic!("Error i011: Unexpected token: {:?} on line {}", token, self.line_number)
+        }
     }
 }

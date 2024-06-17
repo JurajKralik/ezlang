@@ -2,7 +2,8 @@ use crate::tokenizer::*;
 
 #[derive(Debug)]
 pub enum ASTNode {
-    Number(i64, usize),
+    Integer(i64, usize),
+    Float(f64, usize),
     Identifier(String, usize),
     Boolean(bool, usize),
     String(String, usize),
@@ -40,7 +41,8 @@ pub enum ASTNode {
 impl ASTNode {
     pub fn indent_level(&self) -> usize {
         match self {
-            ASTNode::Number(_, level) => *level,
+            ASTNode::Integer(_, level) => *level,
+            ASTNode::Float(_, level) => *level,
             ASTNode::Identifier(_, level) => *level,
             ASTNode::Boolean(_, level) => *level,
             ASTNode::String(_, level) => *level,
@@ -242,10 +244,15 @@ impl<'a> Parser<'a> {
 
     fn parse_primary(&mut self) -> ASTNode {
         match &self.current_token {
-            Token::Number(value) => {
+            Token::Integer(value) => {
                 let number = value.clone();
                 self.advance();
-                ASTNode::Number(number, self.tokenizer.indent_level)
+                ASTNode::Integer(number, self.tokenizer.indent_level)
+            }
+            Token::Float(value) => {
+                let number = value.clone();
+                self.advance();
+                ASTNode::Float(number, self.tokenizer.indent_level)
             }
             Token::Identifier(name) => {
                 let identifier = name.clone();
