@@ -1,6 +1,5 @@
 use crate::tokenizer::*;
 
-
 #[derive(Debug)]
 pub enum ASTNode {
     Number(i64, usize),
@@ -26,11 +25,11 @@ pub enum ASTNode {
     },
     ConditionalOperation {
         condition: Box<ASTNode>,
-        indent_level: usize
+        indent_level: usize,
     },
     AlternativeOperation {
         condition: Option<Box<ASTNode>>,
-        indent_level: usize
+        indent_level: usize,
     },
     OutputOperation {
         value: Box<ASTNode>,
@@ -46,7 +45,10 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(tokenizer: Tokenizer<'a>) -> Self {
-        let mut parser = Parser { tokenizer, current_token: Token::EOF };
+        let mut parser = Parser {
+            tokenizer,
+            current_token: Token::EOF,
+        };
         parser.advance();
         parser
     }
@@ -55,53 +57,139 @@ impl<'a> Parser<'a> {
         self.current_token = self.tokenizer.next_token();
     }
 
-    pub fn parse(&mut self) -> ASTNode {
-        if self.tokenizer.peek_token() == Token::Bind {
-            let variable = self.current_token.clone();
+    fn expect(&mut self, expected_token: Token) {
+        if self.current_token == expected_token {
             self.advance();
-            self.advance();
-            let node = self.expression();
-            ASTNode::BindingOperation {
-                variable,
-                value: Box::new(node),
-                indent_level: self.tokenizer.indent_level,}
-            } else if self.current_token == Token::Print {
-            self.advance();
-            self.expect(Token::OpenParen);
-            let node = self.expression();
-            self.expect(Token::CloseParen);
-            ASTNode::OutputOperation {
-                value: Box::new(node),
-                indent_level: self.tokenizer.indent_level,
-            }
-        } else if self.current_token == Token::If {
-            self.advance();
-            let node = self.expression();
-            self.expect(Token::Colon);
-            ASTNode::ConditionalOperation {
-                condition: Box::new(node),
-                indent_level: self.tokenizer.indent_level,
-            }
-        } else if self.current_token == Token::Else {
-            ASTNode::AlternativeOperation {
-                condition: None,
-                indent_level: self.tokenizer.indent_level,
-            }
-        } else if self.current_token == Token::ElseIf {
-            self.advance();
-            let node = self.expression();
-            self.expect(Token::Colon);
-            ASTNode::AlternativeOperation {
-                condition: Some(Box::new(node)),
-                indent_level: self.tokenizer.indent_level,
-            }
         } else {
-            self.expression()
+            panic!(
+                "Error p002: Expected token: {:?}, but found: {:?}",
+                expected_token, self.current_token
+            );
         }
     }
 
-    fn expression(&mut self) -> ASTNode {
-        let mut node = self.term();
+    pub fn parse(&mut self) -> ASTNode {
+        // Binding
+        if self.tokenizer.peek_token() == Token::Bind {
+            self.parse_binding()
+        } else {
+            self.parse_condition()
+        }
+    }
+
+    fn parse_binding(&mut self) -> ASTNode {
+        let variable = self.current_token.clone();
+        self.advance();
+        self.advance();
+        let node = self.parse_or();
+        ASTNode::BindingOperation {
+            variable,
+            value: Box::new(node),
+            indent_level: self.tokenizer.indent_level,
+        }
+    }
+
+    fn parse_condition(&mut self) -> ASTNode {
+        match self.current_token {
+            // Conditional
+            Token::If => {
+                self.advance();
+                let node = self.parse_or();
+                self.expect(Token::Colon);
+                ASTNode::ConditionalOperation {
+                    condition: Box::new(node),
+                    indent_level: self.tokenizer.indent_level,
+                }
+            }
+            Token::Else => ASTNode::AlternativeOperation {
+                condition: None,
+                indent_level: self.tokenizer.indent_level,
+            },
+            Token::ElseIf => {
+                self.advance();
+                let node = self.parse_or();
+                self.expect(Token::Colon);
+                ASTNode::AlternativeOperation {
+                    condition: Some(Box::new(node)),
+                    indent_level: self.tokenizer.indent_level,
+                }
+            }
+            _ => self.parse_print(),
+        }
+    }
+
+    fn parse_print(&mut self) -> ASTNode {
+        match self.current_token {
+            //Print
+            Token::Print => {
+                self.advance();
+                self.expect(Token::OpenParen);
+                let node = self.parse_or();
+                self.expect(Token::CloseParen);
+                ASTNode::OutputOperation {
+                    value: Box::new(node),
+                    indent_level: self.tokenizer.indent_level,
+                }
+            }
+            _ => self.parse_or(),
+        }
+    }
+
+    fn parse_or(&mut self) -> ASTNode {
+        let mut node = self.parse_and();
+
+        while self.current_token == Token::Or{
+            let operator = self.current_token.clone();
+            self.advance();
+            node = ASTNode::BinaryOperation {
+                left: Box::new(node),
+                operator,
+                right: Box::new(self.parse_and()),
+                indent_level: self.tokenizer.indent_level,
+            };
+        }
+        node
+    }
+
+    fn parse_and(&mut self) -> ASTNode {
+        let mut node = self.parse_comparison();
+
+        while self.current_token == Token::And{
+            let operator = self.current_token.clone();
+            self.advance();
+            node = ASTNode::BinaryOperation {
+                left: Box::new(node),
+                operator,
+                right: Box::new(self.parse_comparison()),
+                indent_level: self.tokenizer.indent_level,
+            };
+        }
+        node
+    }
+
+    fn parse_comparison(&mut self) -> ASTNode {
+        let mut node = self.parse_addition();
+
+        while self.current_token == Token::Comparison(Compare::Equal)
+        || self.current_token == Token::Comparison(Compare::NotEqual)
+        || self.current_token == Token::Comparison(Compare::GreaterThan)
+        || self.current_token == Token::Comparison(Compare::LessThan)
+        || self.current_token == Token::Comparison(Compare::GreaterThanOrEqual)
+        || self.current_token == Token::Comparison(Compare::LessThanOrEqual){
+            let operator = self.current_token.clone();
+            self.advance();
+            node = ASTNode::BinaryOperation {
+                left: Box::new(node),
+                operator,
+                right: Box::new(self.parse_addition()),
+                indent_level: self.tokenizer.indent_level,
+            };
+        }
+        node
+    }
+
+    fn parse_addition(&mut self) -> ASTNode {
+        let mut node = self.parse_multiplication();
 
         while self.current_token == Token::Plus || self.current_token == Token::Minus {
             let operator = self.current_token.clone();
@@ -109,34 +197,35 @@ impl<'a> Parser<'a> {
             node = ASTNode::BinaryOperation {
                 left: Box::new(node),
                 operator,
-                right: Box::new(self.term()),
+                right: Box::new(self.parse_multiplication()),
                 indent_level: self.tokenizer.indent_level,
             };
         }
-
         node
     }
 
-    fn term(&mut self) -> ASTNode {
-        let mut node = self.factor();
+    fn parse_multiplication(&mut self) -> ASTNode {
+        let mut node = self.parse_primary();
 
-        while self.current_token == Token::Asterisk || self.current_token == Token::Slash || self.current_token == Token::Modulo || self.current_token == Token::And || self.current_token == Token::Or {
+        while self.current_token == Token::Asterisk
+            || self.current_token == Token::Slash
+            || self.current_token == Token::Modulo
+        {
             let operator = self.current_token.clone();
             self.advance();
             node = ASTNode::BinaryOperation {
                 left: Box::new(node),
                 operator,
-                right: Box::new(self.factor()),
+                right: Box::new(self.parse_primary()),
                 indent_level: self.tokenizer.indent_level,
             };
         }
-
         node
     }
 
-    fn factor(&mut self) -> ASTNode {
+    fn parse_primary(&mut self) -> ASTNode {
         match &self.current_token {
-            Token::Number(value ) => {
+            Token::Number(value) => {
                 let number = value.clone();
                 self.advance();
                 ASTNode::Number(number, self.tokenizer.indent_level)
@@ -148,7 +237,7 @@ impl<'a> Parser<'a> {
             }
             Token::OpenParen => {
                 self.advance();
-                let node = self.expression();
+                let node = self.parse_or();
                 self.expect(Token::CloseParen);
                 node
             }
@@ -159,7 +248,7 @@ impl<'a> Parser<'a> {
             }
             Token::Not => {
                 self.advance();
-                let node = self.factor();
+                let node = self.parse_primary();
                 ASTNode::LogicalOperation {
                     left: Box::new(ASTNode::Boolean(false, self.tokenizer.indent_level)),
                     operator: Token::Not,
@@ -173,14 +262,6 @@ impl<'a> Parser<'a> {
                 ASTNode::String(string, self.tokenizer.indent_level)
             }
             _ => panic!("Error p001: Unexpected token: {:?}", self.current_token),
-        }
-    }
-
-    fn expect(&mut self, expected_token: Token) {
-        if self.current_token == expected_token {
-            self.advance();
-        } else {
-            panic!("Error p002: Expected token: {:?}, but found: {:?}", expected_token, self.current_token);
         }
     }
 }

@@ -1,2 +1,2 @@
-x = 9
-print(x)
+result = not (5 + 3 * 4)
+print(result)

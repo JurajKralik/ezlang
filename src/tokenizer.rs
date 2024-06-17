@@ -6,7 +6,7 @@ pub enum Token {
     Number(i64),
     String(String),
     Identifier(String),
-    Equals,
+    Comparison(Compare),
     Bind,
     Plus,
     Minus,
@@ -21,12 +21,22 @@ pub enum Token {
     If,
     Else,
     ElseIf,
+    For,
     Print,
     Colon,
     EOF,
     Unknown,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Compare {
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+}
 
 #[derive(Debug)]
 pub struct Tokenizer<'a> {
@@ -64,10 +74,7 @@ impl<'a> Tokenizer<'a> {
         match current_char {
             '0'..='9' => self.number(),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(),
-            '=' => {
-                self.advance();
-                Token::Bind
-            }
+            '=' => self.equals(),
             '"' => self.string(),
             '+' => {
                 self.advance();
@@ -105,13 +112,28 @@ impl<'a> Tokenizer<'a> {
                 self.advance();
                 Token::Or
             }
-            '!' => {
-                self.advance();
-                Token::Not
-            }
-            ':' => {
+            '!' => self.exclamation(),
+                        ':' => {
                 self.advance();
                 Token::Colon
+            }
+            '<' => {
+                self.advance();
+                if self.current_char() == '=' {
+                    self.advance();
+                    Token::Comparison(Compare::LessThanOrEqual)
+                } else {
+                    Token::Comparison(Compare::LessThan)
+                }
+            }
+            '>' => {
+                self.advance();
+                if self.current_char() == '=' {
+                    self.advance();
+                    Token::Comparison(Compare::GreaterThanOrEqual)
+                } else {
+                    Token::Comparison(Compare::GreaterThan)
+                }
             }
             _ => {
                 self.advance();
@@ -177,12 +199,32 @@ impl<'a> Tokenizer<'a> {
             "and" => Token::And,
             "or" => Token::Or,
             "not" => Token::Not,
-            "is" => Token::Equals,
+            "is" => Token::Comparison(Compare::Equal),
             "if" => Token::If,
             "else" => Token::Else,
             "elseif" => Token::ElseIf,
             "print" => Token::Print,
+            "for" => Token::For,
             _ => Token::Identifier(token),
+        }
+    }
+    fn equals(&mut self) -> Token {
+        self.advance();
+        if self.current_char() == '=' {
+            self.advance();
+            Token::Comparison(Compare::Equal)
+        } else {
+            Token::Bind
+        }
+    }
+
+    fn exclamation(&mut self) -> Token {
+        self.advance();
+        if self.current_char() == '=' {
+            self.advance();
+            Token::Comparison(Compare::NotEqual)
+        } else {
+            Token::Not
         }
     }
 }

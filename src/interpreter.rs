@@ -19,8 +19,9 @@ impl Interpreter {
     }
 
     pub fn interpret_line(&mut self, node: &ASTNode) -> Token {
+        // Check if the interpreter is in a pass state
         if self.pass {
-            let mut local_indent_level = 0;
+            let local_indent_level;
             match node {
                 ASTNode::Number(_value, indent_level) => local_indent_level = indent_level.clone(),
                 ASTNode::Boolean(_value, node_indent_level) => {
@@ -41,9 +42,10 @@ impl Interpreter {
                     value: _,
                     indent_level,
                 } => local_indent_level = indent_level.clone(),
-                ASTNode::OutputOperation { value: _, indent_level } => {
-                    local_indent_level = indent_level.clone()
-                }
+                ASTNode::OutputOperation {
+                    value: _,
+                    indent_level,
+                } => local_indent_level = indent_level.clone(),
                 ASTNode::LogicalOperation {
                     left: _,
                     operator: _,
@@ -72,7 +74,7 @@ impl Interpreter {
                         } else {
                             //Else
                             self.pass = false;
-                            return Token::Boolean(true)
+                            return Token::Boolean(true);
                         }
                     }
                 }
@@ -81,7 +83,7 @@ impl Interpreter {
                 return Token::None;
             } else {
                 self.pass = false;
-                return Token::Boolean(true)
+                return Token::Boolean(true);
             }
         }
         self.interpret(node)
@@ -111,7 +113,10 @@ impl Interpreter {
                 None => panic!("Error i002: Variable not found: {}", name),
             },
             ASTNode::String(value, _indent_level) => Token::String(value.clone()),
-            ASTNode::OutputOperation { value, indent_level: _ } => {
+            ASTNode::OutputOperation {
+                value,
+                indent_level: _,
+            } => {
                 let token_value = self.print_interpret(value);
                 println!("{}", token_value);
                 Token::None
@@ -124,8 +129,8 @@ impl Interpreter {
             } => {
                 let left_val = self.interpret(left);
                 let right_val = self.interpret(right);
-                match operator {
-                    Token::Plus => match (left_val, right_val) {
+                match operator.clone() {
+                    Token::Plus => match (left_val.clone(), right_val.clone()) {
                         (Token::Number(left_num), Token::Number(right_num)) => {
                             Token::Number(left_num + right_num)
                         }
@@ -144,45 +149,51 @@ impl Interpreter {
                         (Token::String(left_str), Token::Number(right_num)) => {
                             Token::String(format!("{}{}", left_str, right_num))
                         }
-                        _ => panic!("Error i003: Unexpected values"),
+                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
                     },
-                    Token::Minus => match (left_val, right_val) {
+                    Token::Minus => match (left_val.clone(), right_val.clone()) {
                         (Token::Number(left_num), Token::Number(right_num)) => {
                             Token::Number(left_num - right_num)
                         }
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool && !right_bool)
                         }
-                        _ => panic!("Error i003: Unexpected values"),
+                        (Token::Boolean(left_bool), Token::Number(right_num)) => {
+                            Token::Boolean(left_bool && !self.num_to_bool(right_num))
+                        }
+                        (Token::Number(left_num), Token::Boolean(right_bool)) => {
+                            Token::Boolean(self.num_to_bool(left_num) && !right_bool)
+                        }
+                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
                     },
-                    Token::Asterisk => match (left_val, right_val) {
+                    Token::Asterisk => match (left_val.clone(), right_val.clone()) {
                         (Token::Number(left_num), Token::Number(right_num)) => {
                             Token::Number(left_num * right_num)
                         }
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool && right_bool)
                         }
-                        _ => panic!("Error i003: Unexpected values"),
+                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
                     },
                     Token::Slash => {
                         if let (Token::Number(left_num), Token::Number(right_num)) =
-                            (left_val, right_val)
+                            (left_val.clone(), right_val.clone())
                         {
                             Token::Number(left_num / right_num)
                         } else {
-                            panic!("Error i003: Unexpected values");
+                         panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val);
                         }
                     }
                     Token::Modulo => {
                         if let (Token::Number(left_num), Token::Number(right_num)) =
-                            (left_val, right_val)
+                            (left_val.clone(), right_val.clone())
                         {
                             Token::Number(left_num % right_num)
                         } else {
-                            panic!("Error i003: Unexpected values");
+                         panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val);
                         }
                     }
-                    Token::And => match (left_val, right_val) {
+                    Token::And => match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => {
                             Token::Boolean(left && right)
                         }
@@ -197,7 +208,7 @@ impl Interpreter {
                         }
                         _ => panic!("Error i003: Unexpected values"),
                     },
-                    Token::Or => match (left_val, right_val) {
+                    Token::Or => match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => {
                             Token::Boolean(left || right)
                         }
@@ -211,6 +222,26 @@ impl Interpreter {
                             Token::Boolean(left || self.num_to_bool(right))
                         }
                         _ => panic!("Error i003: Unexpected values"),
+                    },
+                    Token::Comparison(operator) => match operator {
+                        Compare::Equal => Token::Boolean(left_val == right_val),
+                        Compare::NotEqual => Token::Boolean(left_val != right_val),
+                        Compare::LessThan => match (left_val.clone(), right_val.clone()) {
+                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left < right),
+                            _ => panic!("Error i003: Unexpected values"),
+                        },
+                        Compare::LessThanOrEqual => match (left_val.clone(), right_val.clone()) {
+                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left <= right),
+                            _ => panic!("Error i003: Unexpected values"),
+                        },
+                        Compare::GreaterThan => match (left_val.clone(), right_val.clone()) {
+                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left > right),
+                            _ => panic!("Error i003: Unexpected values"),
+                        },
+                        Compare::GreaterThanOrEqual => match (left_val.clone(), right_val.clone()) {
+                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left >= right),
+                            _ => panic!("Error i003: Unexpected values"),
+                        },
                     },
                     _ => panic!("Error i004: Unexpected operator: {:?}", operator),
                 }
@@ -238,7 +269,7 @@ impl Interpreter {
                 Token::And => {
                     let left_val = self.interpret(left);
                     let right_val = self.interpret(right);
-                    match (left_val, right_val) {
+                    match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => left && right,
                         (Token::Number(left), Token::Number(right)) => {
                             self.num_to_bool(left) && self.num_to_bool(right)
@@ -255,7 +286,7 @@ impl Interpreter {
                 Token::Or => {
                     let left_val = self.interpret(left);
                     let right_val = self.interpret(right);
-                    match (left_val, right_val) {
+                    match (left_val.clone(), right_val.clone()) {
                         (Token::Boolean(left), Token::Boolean(right)) => left || right,
                         (Token::Number(left), Token::Number(right)) => {
                             self.num_to_bool(left) || self.num_to_bool(right)
@@ -273,6 +304,7 @@ impl Interpreter {
                     let right_val = self.interpret(right);
                     match right_val {
                         Token::Boolean(right) => !right,
+                        Token::Number(right) => !self.num_to_bool(right),
                         _ => panic!("Error i006: Unexpected values"),
                     }
                 }
