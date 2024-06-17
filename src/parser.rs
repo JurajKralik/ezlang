@@ -37,6 +37,23 @@ pub enum ASTNode {
     },
 }
 
+impl ASTNode {
+    pub fn indent_level(&self) -> usize {
+        match self {
+            ASTNode::Number(_, level) => *level,
+            ASTNode::Identifier(_, level) => *level,
+            ASTNode::Boolean(_, level) => *level,
+            ASTNode::String(_, level) => *level,
+            ASTNode::BinaryOperation { indent_level, .. } => *indent_level,
+            ASTNode::BindingOperation { indent_level, .. } => *indent_level,
+            ASTNode::LogicalOperation { indent_level, .. } => *indent_level,
+            ASTNode::ConditionalOperation { indent_level, .. } => *indent_level,
+            ASTNode::AlternativeOperation { indent_level, .. } => *indent_level,
+            ASTNode::OutputOperation { indent_level, .. } => *indent_level,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Parser<'a> {
     tokenizer: Tokenizer<'a>,

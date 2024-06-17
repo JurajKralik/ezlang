@@ -11,7 +11,6 @@ use crate::interpreter::*;
 use crate::parser::*;
 use crate::tokenizer::*;
 
-
 fn read_file_to_string(file_path: &str) -> io::Result<String> {
     let path = Path::new(file_path);
     let mut file = File::open(&path)?;
@@ -34,22 +33,34 @@ fn main() {
     if !file_path.ends_with(".ez") {
         panic!("Error: The file does not have an .ez extension");
     }
+    let mut debugger = false;
+    if args.len() == 3 {
+        debugger = &args[2] == "y";
+    }
 
     match read_file_to_string(file_path) {
         Ok(content) => {
             let mut interpreter = Interpreter::new();
 
             for line in split_to_lines(content.as_str()) {
-                println!("__________________");
-                println!("Line: {}", line);
+                if debugger {
+                    println!("__________________");
+                    println!("Line: {}", line);
+                }
                 let tokenizer = Tokenizer::new(line);
-                println!("{:?}", tokenizer);
+                if debugger {
+                    println!("{:?}", tokenizer);
+                }
                 let mut parser = Parser::new(tokenizer);
                 let ast = parser.parse();
-                println!("AST: {:#?}", ast);
-                println!("{:?}", interpreter);
+                if debugger {
+                    println!("AST: {:#?}", ast);
+                    println!("{:?}", interpreter);
+                }
                 let result = interpreter.interpret_line(&ast);
-                println!("Result: {:?}", result);
+                if debugger {
+                    println!("Result: {:?}", result);
+                }
             }
         }
         Err(e) => {

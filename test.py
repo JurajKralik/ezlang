@@ -1,2 +1,4 @@
 result = not (5 + 3 * 4)
-print(result)
+if result:
+    print(result)
+    print("True")

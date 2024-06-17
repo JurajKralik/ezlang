@@ -5,86 +5,66 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct Interpreter {
     variables: HashMap<String, Token>,
-    pass: bool,
+    line_number: usize,
+    pass_lock: bool,
     indent_level: usize,
+    new_indent_level: bool,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             variables: HashMap::new(),
-            pass: false,
+            line_number: 0,
+            pass_lock: false,
             indent_level: 0,
+            new_indent_level: false,
         }
     }
 
     pub fn interpret_line(&mut self, node: &ASTNode) -> Token {
-        // Check if the interpreter is in a pass state
-        if self.pass {
-            let local_indent_level;
-            match node {
-                ASTNode::Number(_value, indent_level) => local_indent_level = indent_level.clone(),
-                ASTNode::Boolean(_value, node_indent_level) => {
-                    local_indent_level = node_indent_level.clone()
-                }
-                ASTNode::Identifier(_name, node_indent_level) => {
-                    local_indent_level = node_indent_level.clone()
-                }
-                ASTNode::String(_value, indent_level) => local_indent_level = indent_level.clone(),
-                ASTNode::BinaryOperation {
-                    left: _,
-                    operator: _,
-                    right: _,
-                    indent_level,
-                } => local_indent_level = indent_level.clone(),
-                ASTNode::BindingOperation {
-                    variable: _,
-                    value: _,
-                    indent_level,
-                } => local_indent_level = indent_level.clone(),
-                ASTNode::OutputOperation {
-                    value: _,
-                    indent_level,
-                } => local_indent_level = indent_level.clone(),
-                ASTNode::LogicalOperation {
-                    left: _,
-                    operator: _,
-                    right: _,
-                    indent_level,
-                } => local_indent_level = indent_level.clone(),
-                ASTNode::ConditionalOperation {
-                    condition: _,
-                    indent_level,
-                } => local_indent_level = indent_level.clone(),
-                ASTNode::AlternativeOperation {
-                    condition,
-                    indent_level,
-                } => {
-                    local_indent_level = indent_level.clone();
-                    if local_indent_level == self.indent_level {
+        self.line_number += 1;
+        let local_indent_level = node.indent_level();
+
+        if self.new_indent_level {
+            // Set the indent level to the new indent level
+            self.indent_level = local_indent_level;
+            self.new_indent_level = false;
+        } else if self.pass_lock {
+            // Check if the interpreter is in a pass state
+            if local_indent_level > self.indent_level {
+                return Token::None;
+            } else if local_indent_level == self.indent_level {
+                match node {
+                    ASTNode::AlternativeOperation {
+                        condition,
+                        indent_level: _,
+                    } => {
                         if let Some(elif_condition) = condition {
                             //Elif
                             if self.interpret(elif_condition) == Token::Boolean(true) {
-                                self.pass = false;
+                                self.pass_lock = false;
+                                self.new_indent_level = true;
                                 return Token::Boolean(true);
                             } else {
-                                self.pass = true;
+                                self.pass_lock = true;
                                 return Token::Boolean(false);
                             }
                         } else {
                             //Else
-                            self.pass = false;
+                            self.pass_lock = false;
+                            self.new_indent_level = true;
                             return Token::Boolean(true);
                         }
                     }
+                    _ => {
+                        self.pass_lock = false;
+                    }
                 }
             }
-            if local_indent_level > self.indent_level && self.pass {
-                return Token::None;
-            } else {
-                self.pass = false;
-                return Token::Boolean(true);
-            }
+        } else if local_indent_level > self.indent_level {
+            // Off limits
+            panic!("Error i010: Unexpected indent level on line {}", self.line_number);
         }
         self.interpret(node)
     }
@@ -149,7 +129,10 @@ impl Interpreter {
                         (Token::String(left_str), Token::Number(right_num)) => {
                             Token::String(format!("{}{}", left_str, right_num))
                         }
-                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
+                        _ => panic!(
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
+                            left_val, operator, right_val
+                        ),
                     },
                     Token::Minus => match (left_val.clone(), right_val.clone()) {
                         (Token::Number(left_num), Token::Number(right_num)) => {
@@ -164,7 +147,10 @@ impl Interpreter {
                         (Token::Number(left_num), Token::Boolean(right_bool)) => {
                             Token::Boolean(self.num_to_bool(left_num) && !right_bool)
                         }
-                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
+                        _ => panic!(
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
+                            left_val, operator, right_val
+                        ),
                     },
                     Token::Asterisk => match (left_val.clone(), right_val.clone()) {
                         (Token::Number(left_num), Token::Number(right_num)) => {
@@ -173,7 +159,10 @@ impl Interpreter {
                         (Token::Boolean(left_bool), Token::Boolean(right_bool)) => {
                             Token::Boolean(left_bool && right_bool)
                         }
-                        _ => panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val),
+                        _ => panic!(
+                            "Error i003: Unexpected values {:?}, {:?}, {:?}",
+                            left_val, operator, right_val
+                        ),
                     },
                     Token::Slash => {
                         if let (Token::Number(left_num), Token::Number(right_num)) =
@@ -181,7 +170,10 @@ impl Interpreter {
                         {
                             Token::Number(left_num / right_num)
                         } else {
-                         panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val);
+                            panic!(
+                                "Error i003: Unexpected values {:?}, {:?}, {:?}",
+                                left_val, operator, right_val
+                            );
                         }
                     }
                     Token::Modulo => {
@@ -190,7 +182,10 @@ impl Interpreter {
                         {
                             Token::Number(left_num % right_num)
                         } else {
-                         panic!("Error i003: Unexpected values {:?}, {:?}, {:?}", left_val, operator, right_val);
+                            panic!(
+                                "Error i003: Unexpected values {:?}, {:?}, {:?}",
+                                left_val, operator, right_val
+                            );
                         }
                     }
                     Token::And => match (left_val.clone(), right_val.clone()) {
@@ -227,21 +222,31 @@ impl Interpreter {
                         Compare::Equal => Token::Boolean(left_val == right_val),
                         Compare::NotEqual => Token::Boolean(left_val != right_val),
                         Compare::LessThan => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left < right),
+                            (Token::Number(left), Token::Number(right)) => {
+                                Token::Boolean(left < right)
+                            }
                             _ => panic!("Error i003: Unexpected values"),
                         },
                         Compare::LessThanOrEqual => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left <= right),
+                            (Token::Number(left), Token::Number(right)) => {
+                                Token::Boolean(left <= right)
+                            }
                             _ => panic!("Error i003: Unexpected values"),
                         },
                         Compare::GreaterThan => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left > right),
+                            (Token::Number(left), Token::Number(right)) => {
+                                Token::Boolean(left > right)
+                            }
                             _ => panic!("Error i003: Unexpected values"),
                         },
-                        Compare::GreaterThanOrEqual => match (left_val.clone(), right_val.clone()) {
-                            (Token::Number(left), Token::Number(right)) => Token::Boolean(left >= right),
-                            _ => panic!("Error i003: Unexpected values"),
-                        },
+                        Compare::GreaterThanOrEqual => {
+                            match (left_val.clone(), right_val.clone()) {
+                                (Token::Number(left), Token::Number(right)) => {
+                                    Token::Boolean(left >= right)
+                                }
+                                _ => panic!("Error i003: Unexpected values"),
+                            }
+                        }
                     },
                     _ => panic!("Error i004: Unexpected operator: {:?}", operator),
                 }
@@ -318,12 +323,14 @@ impl Interpreter {
                 match condition_val {
                     Token::Boolean(true) => {
                         self.indent_level = indent_level.clone();
-                        self.pass = false;
+                        self.pass_lock = false;
+                        self.new_indent_level = true;
                         Token::Boolean(true)
                     }
                     Token::Boolean(false) => {
                         self.indent_level = indent_level.clone();
-                        self.pass = true;
+                        self.pass_lock = true;
+                        self.new_indent_level = false;
                         Token::Boolean(false)
                     }
                     _ => panic!("Error i008: Unexpected value: {:?}", condition_val),
@@ -334,7 +341,7 @@ impl Interpreter {
                 indent_level,
             } => {
                 self.indent_level = indent_level.clone();
-                self.pass = true;
+                self.pass_lock = true;
                 Token::None
             }
         }

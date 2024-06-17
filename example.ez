@@ -1,2 +1,11 @@
-result = not (5 + 3 * 4)
+result = "Hello World!"
+test = 3
+if test is 3:
+    print("Correct")
+    if not test:
+        print("test false")
+    else:
+        print("test true")
+        print("no")
+else:
 print(result)
