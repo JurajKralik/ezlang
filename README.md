@@ -1,6 +1,12 @@
 # EZlang
 
-EZ language is interpreted language written in Rust focused on simple syntax like Python with higher performance, building macros and automation of applications. The main goal is making a language suitable for education of coding for begginers.
+This language is a thesis for the software engineering.
+
+EZ language is interpreted language written in Rust focused on simple syntax like Python with higher performance, building macros and automation of applications. 
+
+The main goal is making a language suitable for education of coding for begginers.
+
+EZ language syntax focuses on indetation like Python instead of semicolons or curly brackets
 
 ## Features
 - Types 
