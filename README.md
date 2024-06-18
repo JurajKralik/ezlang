@@ -1,6 +1,6 @@
 # EZlang
 
-EZlang is interpreted language written in Rust focused on simple syntax, building macros and automation of applications. The main goal is making a language suitable for education of coding for begginers.
+EZ language is interpreted language written in Rust focused on simple syntax like Python with higher performance, building macros and automation of applications. The main goal is making a language suitable for education of coding for begginers.
 
 ## Features
 - Types 
@@ -26,3 +26,6 @@ EZlang is interpreted language written in Rust focused on simple syntax, buildin
   - [ ] Keystroke output
   - [ ] Pixel detection
   - [ ] GUI
+
+## Dependencies
+- Rust 1.76.0 or higher
