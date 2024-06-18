@@ -19,9 +19,9 @@ EZlang is interpreted language written in Rust focused on simple syntax, buildin
   - [x] Logical operations
   - [x] Comparisons
   - [ ] Loops
-  - [?] Functions
-  - [?] Classes
-  - [?] Imports
+  - [ ] Functions
+  - [ ] Classes
+  - [ ] Imports
   - [ ] Keystroke detection
   - [ ] Keystroke output
   - [ ] Pixel detection
